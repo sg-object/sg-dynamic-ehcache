@@ -1,5 +1,6 @@
 package com.sg.dynamic.ehcache.builder;
 
+import java.io.File;
 import java.util.Optional;
 import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.ehcache.EhCacheCacheManager;
 import org.springframework.stereotype.Component;
 import net.sf.ehcache.Cache;
+import net.sf.ehcache.DiskStorePathManager;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
 import net.sf.ehcache.config.CacheConfiguration;
@@ -24,6 +26,9 @@ public class CacheBuilder {
 	@Value("${ehcache.cacheNames.cacheName}")
 	private String cacheNames;
 	
+	@Value("${ehcache.diskStore.suffix}")
+	private String[] suffix;
+	
 	@PostConstruct
 	private void initCache(){
 		Ehcache cache = getEhcache(cacheNames);
@@ -35,18 +40,27 @@ public class CacheBuilder {
 	
 	public void createCacheAndAddName(String cacheName){
 		// Cache Name Add & Check
-		checkCacheName(cacheName);
+		checkNameCache(cacheName);
 		addCacheName(cacheName);
 		createCache(cacheName);
 	}
 	
 	public void removeCache(String cacheName){
-		checkCacheName(cacheName);
+		checkNameCache(cacheName);
 		Ehcache ehcache = getEhcache(cacheNames);
 		if(ehcache.get(cacheName) != null){
 			ehcache.remove(cacheName);
+			cacheManager.getCache(cacheName).clear();
 			cacheManager.getCacheManager().removeCache(cacheName);
 			logger.info("========= remove cache : {} =========", cacheName);
+			DiskStorePathManager diskStorePathManager = cacheManager.getCacheManager().getDiskStorePathManager();
+			for(String value : suffix){
+				File file = diskStorePathManager.getFile(cacheName, value);
+				if(file.exists()){
+					logger.info("========= remove cache file : {} =========", file.getName());
+					file.delete();
+				}
+			}
 		}else{
 			logger.info("========= not found cache : {} =========", cacheName);
 		}
@@ -54,6 +68,11 @@ public class CacheBuilder {
 	
 	public Ehcache getEhcache(String cacheName){
 		return Optional.ofNullable(cacheManager.getCacheManager().getCache(cacheName)).orElseThrow(() -> new RuntimeException());
+	}
+	
+	public boolean checkCacheName(String cacheName){
+		Ehcache cache = getEhcache(cacheNames);
+		return cache.get(cacheName) != null ? true : false;
 	}
 	
 	private void createCache(String cacheName){
@@ -67,6 +86,7 @@ public class CacheBuilder {
 		cacheConfig.overflowToDisk(true);
 
 		cacheManager.getCacheManager().addCache(new Cache(cacheConfig));
+		logger.info("========= create cache : {} =========", cacheName);
 	}
 	
 	private void addCacheName(String cacheName){
@@ -78,7 +98,7 @@ public class CacheBuilder {
 		}
 	}
 	
-	private void checkCacheName(String cacheName){
+	private void checkNameCache(String cacheName){
 		if(cacheNames.equals(cacheName)){
 			throw new RuntimeException();
 		}
