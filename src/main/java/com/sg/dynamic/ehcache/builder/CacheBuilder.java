@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.ehcache.EhCacheCacheManager;
 import org.springframework.stereotype.Component;
+import com.sg.dynamic.ehcache.common.exception.NotFoundCacheException;
+import com.sg.dynamic.ehcache.common.exception.UsedCacheNameException;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.DiskStorePathManager;
 import net.sf.ehcache.Ehcache;
@@ -50,7 +52,8 @@ public class CacheBuilder {
 		Ehcache ehcache = getEhcache(cacheNames);
 		if(ehcache.get(cacheName) != null){
 			ehcache.remove(cacheName);
-			cacheManager.getCache(cacheName).clear();
+			Ehcache target = getEhcache(cacheName);
+			target.removeAll();
 			cacheManager.getCacheManager().removeCache(cacheName);
 			logger.info("========= remove cache : {} =========", cacheName);
 			DiskStorePathManager diskStorePathManager = cacheManager.getCacheManager().getDiskStorePathManager();
@@ -62,12 +65,12 @@ public class CacheBuilder {
 				}
 			}
 		}else{
-			logger.info("========= not found cache : {} =========", cacheName);
+			throw new NotFoundCacheException();
 		}
 	}
 	
 	public Ehcache getEhcache(String cacheName){
-		return Optional.ofNullable(cacheManager.getCacheManager().getCache(cacheName)).orElseThrow(() -> new RuntimeException());
+		return Optional.ofNullable(cacheManager.getCacheManager().getCache(cacheName)).orElseThrow(() -> new NotFoundCacheException());
 	}
 	
 	public boolean checkCacheName(String cacheName){
@@ -94,13 +97,13 @@ public class CacheBuilder {
 		if(ehcache.get(cacheName) == null){
 			ehcache.put(new Element(cacheName, cacheName));			
 		}else{
-			throw new RuntimeException();
+			throw new UsedCacheNameException();
 		}
 	}
 	
 	private void checkNameCache(String cacheName){
 		if(cacheNames.equals(cacheName)){
-			throw new RuntimeException();
+			throw new UsedCacheNameException();
 		}
 	}
 }

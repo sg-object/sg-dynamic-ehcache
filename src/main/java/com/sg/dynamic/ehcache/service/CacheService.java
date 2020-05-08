@@ -15,6 +15,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import com.sg.dynamic.ehcache.builder.CacheBuilder;
+import com.sg.dynamic.ehcache.common.exception.InternalServerErrorException;
+import com.sg.dynamic.ehcache.common.exception.NotFoundCacheDataException;
+import com.sg.dynamic.ehcache.common.exception.NotFoundCacheException;
+import com.sg.dynamic.ehcache.common.exception.UsedCacheNameException;
 import com.sg.dynamic.ehcache.common.model.CacheVo;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
@@ -57,13 +61,17 @@ public class CacheService {
 	
 	public void removeCacheData(String cacheName, String key){
 		Ehcache ehcache = cacheBuilder.getEhcache(cacheName);
-		ehcache.remove(key);
-		logger.info("========= remove cache data : {} - {} =========", cacheName, key);
+		if(ehcache.get(key) != null){
+			ehcache.remove(key);
+			logger.info("========= remove cache data : {} - {} =========", cacheName, key);	
+		}else{
+			throw new NotFoundCacheDataException();
+		}
 	}
 	
 	public void createCacheByCSV(String cacheName, MultipartFile csv){
 		if(cacheBuilder.checkCacheName(cacheName)){
-			throw new RuntimeException();
+			throw new UsedCacheNameException();
 		}
 		cacheBuilder.createCacheAndAddName(cacheName);
 		Ehcache cache = cacheBuilder.getEhcache(cacheName);
@@ -72,7 +80,7 @@ public class CacheService {
 	
 	public void initCacheByCSV(String cacheName, MultipartFile csv){
 		if(!cacheBuilder.checkCacheName(cacheName)){
-			throw new RuntimeException();
+			throw new NotFoundCacheException();
 		}
 		Ehcache cache = cacheBuilder.getEhcache(cacheName);
 		cache.removeAll();
@@ -93,6 +101,9 @@ public class CacheService {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			// Roll Back Cache
+			cacheBuilder.removeCache(cache.getName());
+			throw new InternalServerErrorException();
 		}
 		logger.info("========= put cache data by CSV : {} =========", cache.getName());
 	}

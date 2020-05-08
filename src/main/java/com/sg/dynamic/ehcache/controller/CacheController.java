@@ -38,7 +38,8 @@ public class CacheController {
 	}
 	
 	@PostMapping("/{cacheName}")
-	public void addCacheData(@RequestBody CacheVo cacheVo){
+	public void addCacheData(@PathVariable("cacheName") String cacheName, @RequestBody CacheVo cacheVo){
+		cacheVo.setCacheName(cacheName);
 		cacheService.addCacheData(cacheVo);
 	}
 	
