@@ -6,9 +6,12 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import com.sg.dynamic.ehcache.common.model.CacheVo;
 import com.sg.dynamic.ehcache.service.CacheService;
 
@@ -25,8 +28,8 @@ public class CacheController {
 	}
 	
 	@PostMapping
-	public void createCache(@RequestBody CacheVo cacheVo){
-		cacheService.createCache(cacheVo.getCacheName());
+	public void createCache(@RequestParam("cacheName")String cacheName){
+		cacheService.createCache(cacheName);
 	}
 	
 	@DeleteMapping("/{cacheName}")
@@ -35,12 +38,23 @@ public class CacheController {
 	}
 	
 	@PostMapping("/{cacheName}")
-	public void addCacheData(@RequestBody CacheVo cacheVo){
+	public void addCacheData(@PathVariable("cacheName") String cacheName, @RequestBody CacheVo cacheVo){
+		cacheVo.setCacheName(cacheName);
 		cacheService.addCacheData(cacheVo);
 	}
 	
 	@DeleteMapping("/{cacheName}/{key}")
 	public void removeCacheData(@PathVariable("cacheName") String cacheName, @PathVariable("key") String key){
 		cacheService.removeCacheData(cacheName, key);
+	}
+
+	@PostMapping("/csv")
+	public void createCacheByCSV(@RequestParam("cacheName")String cacheName, @RequestParam("csv")MultipartFile csv){
+		cacheService.createCacheByCSV(cacheName, csv);
+	}
+	
+	@PutMapping("/csv")
+	public void initCacheByCSV(@RequestParam("cacheName")String cacheName, @RequestParam("csv")MultipartFile csv){
+		cacheService.initCacheByCSV(cacheName, csv);
 	}
 }
